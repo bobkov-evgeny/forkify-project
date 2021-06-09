@@ -449,17 +449,8 @@ function _getRequireWildcardCache(nodeInterop) { if (typeof WeakMap !== "functio
 
 function _interopRequireWildcard(obj, nodeInterop) { if (!nodeInterop && obj && obj.__esModule) { return obj; } if (obj === null || typeof obj !== "object" && typeof obj !== "function") { return { default: obj }; } var cache = _getRequireWildcardCache(nodeInterop); if (cache && cache.has(obj)) { return cache.get(obj); } var newObj = {}; var hasPropertyDescriptor = Object.defineProperty && Object.getOwnPropertyDescriptor; for (var key in obj) { if (key !== "default" && Object.prototype.hasOwnProperty.call(obj, key)) { var desc = hasPropertyDescriptor ? Object.getOwnPropertyDescriptor(obj, key) : null; if (desc && (desc.get || desc.set)) { Object.defineProperty(newObj, key, desc); } else { newObj[key] = obj[key]; } } } newObj.default = obj; if (cache) { cache.set(obj, newObj); } return newObj; }
 
-const recipeContainer = document.querySelector('.recipe');
-
-const timeout = function (s) {
-  return new Promise(function (_, reject) {
-    setTimeout(function () {
-      reject(new Error(`Request took too long! Timeout after ${s} second`));
-    }, s * 1000);
-  });
-}; // https://forkify-api.herokuapp.com/v2
+const recipeContainer = document.querySelector('.recipe'); // https://forkify-api.herokuapp.com/v2
 ////////////////////////////////////////
-
 
 const controlRecipes = async function (e) {
   try {
@@ -473,11 +464,15 @@ const controlRecipes = async function (e) {
 
     _recipeView.default.render(model.state.recipe);
   } catch (err) {
-    alert(err);
+    _recipeView.default.renderError();
   }
 };
 
-['hashchange', 'load'].forEach(event => window.addEventListener(event, controlRecipes));
+const init = function () {
+  _recipeView.default.addHandlerRender(controlRecipes);
+};
+
+init();
 },{"core-js/modules/web.immediate.js":"140df4f8e97a45c53c66fead1f5a9e92","./model.js":"aabf248f40f7693ef84a0cb99f385d1f","./views/recipeView.js":"bcae1aced0301b01ccacb3e6f7dfede8"}],"140df4f8e97a45c53c66fead1f5a9e92":[function(require,module,exports) {
 var $ = require('../internals/export');
 
@@ -1324,6 +1319,10 @@ exports.loadRecipe = exports.state = void 0;
 
 var _regeneratorRuntime = require("regenerator-runtime");
 
+var _config = require("./config.js");
+
+var _helpers = require("./helpers.js");
+
 const state = {
   recipe: {}
 };
@@ -1331,9 +1330,7 @@ exports.state = state;
 
 const loadRecipe = async function (id) {
   try {
-    const res = await fetch(`https://forkify-api.herokuapp.com/api/v2/recipes/${id}`);
-    const data = await res.json();
-    if (!res.ok) throw new Error(`${data.message}(${res.status})`);
+    const data = await (0, _helpers.getJSON)(`${_config.API_URL}${id}`);
     const {
       recipe
     } = data.data;
@@ -1348,12 +1345,12 @@ const loadRecipe = async function (id) {
       ingredients: recipe.ingredients
     };
   } catch (err) {
-    alert(err);
+    throw err;
   }
 };
 
 exports.loadRecipe = loadRecipe;
-},{"regenerator-runtime":"e155e0d3930b156f86c48e8d05522b16"}],"e155e0d3930b156f86c48e8d05522b16":[function(require,module,exports) {
+},{"regenerator-runtime":"e155e0d3930b156f86c48e8d05522b16","./config.js":"09212d541c5c40ff2bd93475a904f8de","./helpers.js":"0e8dcd8a4e1c61cf18f78e1c2563655d"}],"e155e0d3930b156f86c48e8d05522b16":[function(require,module,exports) {
 /**
  * Copyright (c) 2014-present, Facebook, Inc.
  *
@@ -2103,7 +2100,50 @@ try {
   Function("r", "regeneratorRuntime = r")(runtime);
 }
 
-},{}],"bcae1aced0301b01ccacb3e6f7dfede8":[function(require,module,exports) {
+},{}],"09212d541c5c40ff2bd93475a904f8de":[function(require,module,exports) {
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.TIMEOUT_SEC = exports.API_URL = void 0;
+const API_URL = `https://forkify-api.herokuapp.com/api/v2/recipes/`;
+exports.API_URL = API_URL;
+const TIMEOUT_SEC = 10;
+exports.TIMEOUT_SEC = TIMEOUT_SEC;
+},{}],"0e8dcd8a4e1c61cf18f78e1c2563655d":[function(require,module,exports) {
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.getJSON = void 0;
+
+var _regeneratorRuntime = require("regenerator-runtime");
+
+var _config = require("./config.js");
+
+const timeout = function (s) {
+  return new Promise(function (_, reject) {
+    setTimeout(function () {
+      reject(new Error(`Request took too long! Timeout after ${s} second`));
+    }, s * 1000);
+  });
+};
+
+const getJSON = async function (url) {
+  try {
+    const res = await Promise.race([fetch(url), timeout(_config.TIMEOUT_SEC)]);
+    const data = await res.json();
+    if (!res.ok) throw new Error(`${data.message}(${res.status})`);
+    return data;
+  } catch (err) {
+    throw err;
+  }
+};
+
+exports.getJSON = getJSON;
+},{"regenerator-runtime":"e155e0d3930b156f86c48e8d05522b16","./config.js":"09212d541c5c40ff2bd93475a904f8de"}],"bcae1aced0301b01ccacb3e6f7dfede8":[function(require,module,exports) {
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -2117,8 +2157,6 @@ var _fractional = _interopRequireDefault(require("fractional"));
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
-function _defineProperty(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
-
 function _classPrivateFieldGet(receiver, privateMap) { var descriptor = _classExtractFieldDescriptor(receiver, privateMap, "get"); return _classApplyDescriptorGet(receiver, descriptor); }
 
 function _classApplyDescriptorGet(receiver, descriptor) { if (descriptor.get) { return descriptor.get.call(receiver); } return descriptor.value; }
@@ -2131,11 +2169,13 @@ function _classExtractFieldDescriptor(receiver, privateMap, action) { if (!priva
 
 function _classApplyDescriptorSet(receiver, descriptor, value) { if (descriptor.set) { descriptor.set.call(receiver, value); } else { if (!descriptor.writable) { throw new TypeError("attempted to set read only private field"); } descriptor.value = value; } }
 
-console.log(_fractional.default);
-
 var _parentElement = /*#__PURE__*/new WeakMap();
 
 var _data = /*#__PURE__*/new WeakMap();
+
+var _errorMessage = /*#__PURE__*/new WeakMap();
+
+var _message = /*#__PURE__*/new WeakMap();
 
 var _clear = /*#__PURE__*/new WeakSet();
 
@@ -2161,16 +2201,14 @@ class RecipeView {
       value: void 0
     });
 
-    _defineProperty(this, "renderSpinner", function () {
-      const markup = `
-			<div class="spinner">
-				<svg>
-					<use href="${_icons.default}#icon-loader"></use>
-				</svg>
-			</div>`;
-      _classPrivateFieldGet(this, _parentElement).innerHTML = '';
+    _errorMessage.set(this, {
+      writable: true,
+      value: `Sorry, we could not find that recipe. Please try another one!`
+    });
 
-      _classPrivateFieldGet(this, _parentElement).insertAdjacentHTML('afterbegin', markup);
+    _message.set(this, {
+      writable: true,
+      value: ``
     });
   }
 
@@ -2178,6 +2216,55 @@ class RecipeView {
     _classPrivateFieldSet(this, _data, data);
 
     const markup = _classPrivateMethodGet(this, _generateMarkup, _generateMarkup2).call(this);
+
+    _classPrivateMethodGet(this, _clear, _clear2).call(this);
+
+    _classPrivateFieldGet(this, _parentElement).insertAdjacentHTML('afterbegin', markup);
+  }
+
+  renderSpinner() {
+    const markup = `
+			<div class="spinner">
+				<svg>
+					<use href="${_icons.default}#icon-loader"></use>
+				</svg>
+			</div>`;
+
+    _classPrivateMethodGet(this, _clear, _clear2).call(this);
+
+    _classPrivateFieldGet(this, _parentElement).insertAdjacentHTML('afterbegin', markup);
+  }
+
+  addHandlerRender(handler) {
+    ['hashchange', 'load'].forEach(event => window.addEventListener(event, handler));
+  }
+
+  renderError(msg = _classPrivateFieldGet(this, _errorMessage)) {
+    const markup = `
+      <div class="error">
+        <div>
+          <svg>
+            <use href="${_icons.default}#icon-alert-triangle"></use>
+          </svg>
+        </div>
+        <p>${msg}</p>
+      </div>`;
+
+    _classPrivateMethodGet(this, _clear, _clear2).call(this);
+
+    _classPrivateFieldGet(this, _parentElement).insertAdjacentHTML('afterbegin', markup);
+  }
+
+  renderMessage(msg = _classPrivateFieldGet(this, _message)) {
+    const markup = `
+      <div class="message">
+        <div>
+          <svg>
+            <use href="${_icons.default}#icon-smile"></use>
+          </svg>
+        </div>
+        <p>${msg}</p>
+      </div>`;
 
     _classPrivateMethodGet(this, _clear, _clear2).call(this);
 
