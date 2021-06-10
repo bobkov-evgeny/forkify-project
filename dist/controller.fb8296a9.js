@@ -447,6 +447,8 @@ var _searchView = _interopRequireDefault(require("./views/searchView.js"));
 
 var _resultsView = _interopRequireDefault(require("./views/resultsView.js"));
 
+var _paginationView = _interopRequireDefault(require("./views/paginationView.js"));
+
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 function _getRequireWildcardCache(nodeInterop) { if (typeof WeakMap !== "function") return null; var cacheBabelInterop = new WeakMap(); var cacheNodeInterop = new WeakMap(); return (_getRequireWildcardCache = function (nodeInterop) { return nodeInterop ? cacheNodeInterop : cacheBabelInterop; })(nodeInterop); }
@@ -466,7 +468,8 @@ const controlRecipes = async function (e) {
 
     await model.loadRecipe(id); // rendering recipe
 
-    _recipeView.default.render(model.state.recipe);
+    _recipeView.default.render(model.state.recipe); // render pagination buttons
+
   } catch (err) {
     _recipeView.default.renderError();
   }
@@ -483,6 +486,8 @@ const controlSearchResults = async function () {
     await model.loadSearchResults(query);
 
     _resultsView.default.render(model.getSearchResultsPage(1));
+
+    _paginationView.default.render(model.state.search);
   } catch (err) {
     console.log(err);
   }
@@ -490,14 +495,24 @@ const controlSearchResults = async function () {
 
 controlSearchResults();
 
+const controlPagination = function (page) {
+  _resultsView.default.render(model.getSearchResultsPage(page));
+
+  _paginationView.default.render(model.state.search);
+
+  console.log(model);
+};
+
 const init = function () {
   _recipeView.default.addHandlerRender(controlRecipes);
 
   _searchView.default.addHandlerSearch(controlSearchResults);
+
+  _paginationView.default.addHandlerClick(controlPagination);
 };
 
 init();
-},{"core-js/modules/web.immediate.js":"140df4f8e97a45c53c66fead1f5a9e92","./model.js":"aabf248f40f7693ef84a0cb99f385d1f","./views/recipeView.js":"bcae1aced0301b01ccacb3e6f7dfede8","./views/searchView.js":"c5d792f7cac03ef65de30cc0fbb2cae7","./views/resultsView.js":"eacdbc0d50ee3d2819f3ee59366c2773"}],"140df4f8e97a45c53c66fead1f5a9e92":[function(require,module,exports) {
+},{"core-js/modules/web.immediate.js":"140df4f8e97a45c53c66fead1f5a9e92","./model.js":"aabf248f40f7693ef84a0cb99f385d1f","./views/recipeView.js":"bcae1aced0301b01ccacb3e6f7dfede8","./views/searchView.js":"c5d792f7cac03ef65de30cc0fbb2cae7","./views/resultsView.js":"eacdbc0d50ee3d2819f3ee59366c2773","./views/paginationView.js":"d2063f3e7de2e4cdacfcb5eb6479db05"}],"140df4f8e97a45c53c66fead1f5a9e92":[function(require,module,exports) {
 var $ = require('../internals/export');
 
 var global = require('../internals/global');
@@ -1352,7 +1367,7 @@ const state = {
   search: {
     query: '',
     results: [],
-    page: 1,
+    currentPage: 1,
     resultsPerPage: _config.RECIPES_PER_PAGE
   }
 };
@@ -1401,8 +1416,8 @@ const loadSearchResults = async function (query) {
 exports.loadSearchResults = loadSearchResults;
 loadSearchResults('pasta');
 
-const getSearchResultsPage = function (page = state.search.page) {
-  state.search.page = page;
+const getSearchResultsPage = function (page = state.search.currentPage) {
+  state.search.currentPage = page;
   const start = (page - 1) * state.search.resultsPerPage; // 0;
 
   const end = page * state.search.resultsPerPage; // 0;
@@ -2990,6 +3005,84 @@ class ResultsView extends _View.default {
 }
 
 var _default = new ResultsView();
+
+exports.default = _default;
+},{"./View.js":"61b7a1b097e16436be3d54c2f1828c73","url:../../img/icons.svg":"e7989a846aecd2b7a3f9fe7e018a7871"}],"d2063f3e7de2e4cdacfcb5eb6479db05":[function(require,module,exports) {
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.default = void 0;
+
+var _View = _interopRequireDefault(require("./View.js"));
+
+var _icons = _interopRequireDefault(require("url:../../img/icons.svg"));
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function _defineProperty(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
+
+class PaginationView extends _View.default {
+  constructor(...args) {
+    super(...args);
+
+    _defineProperty(this, "_parentElement", document.querySelector('.pagination'));
+  }
+
+  _generateMarkup() {
+    const numOfPages = Math.ceil(this._data.results.length / this._data.resultsPerPage); // Page 1, and there are other pages
+
+    if (Number(this._data.currentPage) === 1 && numOfPages > 1) {
+      console.log(`PAGE 1`);
+      return `
+			${this._generateMarkupButton(`next`)}`;
+    } // Page 1, and there are NO other pages
+
+
+    if (Number(this._data.currentPage) === 1 && numOfPages > 1) {
+      return;
+    } // Last page
+
+
+    if (Number(this._data.currentPage) === numOfPages && numOfPages > 1) {
+      console.log(`LAST PAGE`);
+      return `
+			${this._generateMarkupButton(`prev`)}`;
+    } // Other page
+
+
+    if (Number(this._data.currentPage) !== 1 && Number(this._data.currentPage) !== numOfPages) {
+      return `
+			${this._generateMarkupButton(`prev`)}
+			${this._generateMarkupButton(`next`)}`;
+    }
+  }
+
+  addHandlerClick(handler) {
+    this._parentElement.addEventListener('click', function (e) {
+      const btn = e.target.closest('.btn--inline');
+      if (!btn) return;
+      console.log(btn.id);
+      handler(btn.id);
+    });
+  }
+
+  _generateMarkupButton(nextOrPrev) {
+    return `
+		<button class="btn--inline pagination__btn--${nextOrPrev}" id="${nextOrPrev === 'prev' ? `${this._data.currentPage - 1}` : `${Number(this._data.currentPage) + 1}`}">
+			<svg class="search__icon">
+				<use href="${_icons.default}#icon-arrow-${nextOrPrev === 'prev' ? 'left' : 'right'}"></use>
+			</svg>
+			<span>Page ${nextOrPrev === 'prev' ? `${this._data.currentPage - 1}` : `${Number(this._data.currentPage) + 1}`}</span>
+		</button>		
+		`;
+  }
+
+}
+
+var _default = new PaginationView(); //
+
 
 exports.default = _default;
 },{"./View.js":"61b7a1b097e16436be3d54c2f1828c73","url:../../img/icons.svg":"e7989a846aecd2b7a3f9fe7e018a7871"}]},{},["ac7ede28e73682d62eff9a435bbe18fb","3d1e8ce579c69bcb7ff731dcae25a679","175e469a7ea7db1c8c0744d04372621f"], null)
