@@ -3,20 +3,23 @@ import View from './View.js';
 import icons from 'url:../../img/icons.svg';
 
 class ResultsView extends View {
-  _parentElement = document.querySelector('.results');
-  _errorMessage = `Рецептов по вашему запросу не найдено, попробуйте другой!`;
-  _message = ``;
+   _parentElement = document.querySelector('.results');
+   _errorMessage = `Рецептов по вашему запросу не найдено, попробуйте другой!`;
+   _message = ``;
 
-  _generateMarkup() {
-    return this._data
-      .map(recipe => this._generateMarkupPreview(recipe))
-      .join('');
-  }
+   _generateMarkup() {
+      return this._data
+         .map(recipe => this._generateMarkupPreview(recipe))
+         .join('');
+   }
 
-  _generateMarkupPreview(recipe) {
-    return `
+   _generateMarkupPreview(recipe) {
+      const id = window.location.hash.slice(1);
+      return `
 		<li class="preview">
-			<a class="preview__link preview__link--active" href="#${recipe.id}">
+			<a class="preview__link ${
+            recipe.id === id ? 'preview__link--active' : ''
+         }" href="#${recipe.id}">
 				<figure class="preview__fig">
 					<img src="${recipe.image}" alt="Test" />
 				</figure>
@@ -26,7 +29,7 @@ class ResultsView extends View {
 				</div>
 			</a>
 		</li>`;
-  }
+   }
 }
 
 export default new ResultsView();
