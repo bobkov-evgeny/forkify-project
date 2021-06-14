@@ -468,8 +468,7 @@ const controlRecipes = async function (e) {
 
     await model.loadRecipe(id); // rendering recipe
 
-    _recipeView.default.render(model.state.recipe); // render pagination buttons
-
+    _recipeView.default.render(model.state.recipe);
   } catch (err) {
     _recipeView.default.renderError();
   }
@@ -499,12 +498,19 @@ const controlPagination = function (page) {
   _resultsView.default.render(model.getSearchResultsPage(page));
 
   _paginationView.default.render(model.state.search);
+};
 
-  console.log(model);
+const controlServings = function (newServings) {
+  // update the recipe servings
+  model.updateServings(newServings); // update the recipe view
+
+  _recipeView.default.render(model.state.recipe);
 };
 
 const init = function () {
   _recipeView.default.addHandlerRender(controlRecipes);
+
+  _recipeView.default.addHandlerUpdateServings(controlServings);
 
   _searchView.default.addHandlerSearch(controlSearchResults);
 
@@ -1354,7 +1360,7 @@ module.exports = getBuiltIn('navigator', 'userAgent') || '';
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
-exports.getSearchResultsPage = exports.loadSearchResults = exports.loadRecipe = exports.state = void 0;
+exports.updateServings = exports.getSearchResultsPage = exports.loadSearchResults = exports.loadRecipe = exports.state = void 0;
 
 var _regeneratorRuntime = require("regenerator-runtime");
 
@@ -1426,6 +1432,15 @@ const getSearchResultsPage = function (page = state.search.currentPage) {
 };
 
 exports.getSearchResultsPage = getSearchResultsPage;
+
+const updateServings = function (newServings) {
+  state.recipe.ingredients.forEach(ing => {
+    ing.quantity = ing.quantity * newServings / state.recipe.servings;
+  });
+  state.recipe.servings = newServings;
+};
+
+exports.updateServings = updateServings;
 },{"regenerator-runtime":"e155e0d3930b156f86c48e8d05522b16","./config.js":"09212d541c5c40ff2bd93475a904f8de","./helpers.js":"0e8dcd8a4e1c61cf18f78e1c2563655d"}],"e155e0d3930b156f86c48e8d05522b16":[function(require,module,exports) {
 /**
  * Copyright (c) 2014-present, Facebook, Inc.
@@ -2231,9 +2246,15 @@ exports.default = void 0;
 
 var _View = _interopRequireDefault(require("./View.js"));
 
+var model = _interopRequireWildcard(require("../model.js"));
+
 var _icons = _interopRequireDefault(require("url:../../img/icons.svg"));
 
 var _fractional = _interopRequireDefault(require("fractional"));
+
+function _getRequireWildcardCache(nodeInterop) { if (typeof WeakMap !== "function") return null; var cacheBabelInterop = new WeakMap(); var cacheNodeInterop = new WeakMap(); return (_getRequireWildcardCache = function (nodeInterop) { return nodeInterop ? cacheNodeInterop : cacheBabelInterop; })(nodeInterop); }
+
+function _interopRequireWildcard(obj, nodeInterop) { if (!nodeInterop && obj && obj.__esModule) { return obj; } if (obj === null || typeof obj !== "object" && typeof obj !== "function") { return { default: obj }; } var cache = _getRequireWildcardCache(nodeInterop); if (cache && cache.has(obj)) { return cache.get(obj); } var newObj = {}; var hasPropertyDescriptor = Object.defineProperty && Object.getOwnPropertyDescriptor; for (var key in obj) { if (key !== "default" && Object.prototype.hasOwnProperty.call(obj, key)) { var desc = hasPropertyDescriptor ? Object.getOwnPropertyDescriptor(obj, key) : null; if (desc && (desc.get || desc.set)) { Object.defineProperty(newObj, key, desc); } else { newObj[key] = obj[key]; } } } newObj.default = obj; if (cache) { cache.set(obj, newObj); } return newObj; }
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
@@ -2254,80 +2275,90 @@ class RecipeView extends _View.default {
     ['hashchange', 'load'].forEach(event => window.addEventListener(event, handler));
   }
 
+  addHandlerUpdateServings(handler) {
+    this._parentElement.addEventListener('click', function (e) {
+      const btn = e.target.closest('.btn--update-servings');
+      if (!btn) return;
+      const servings = +btn.dataset.update;
+      if (servings === 0) return;
+      handler(servings);
+    });
+  }
+
   _generateMarkup() {
     return `
-      <figure class="recipe__fig">
-        <img src="${this._data.image}" alt="Tomato" class="recipe__img" />
-        <h1 class="recipe__title">
-          <span>${this._data.title}</span>
-        </h1>
-      </figure>
+			<figure class="recipe__fig">
+				<img src="${this._data.image}" alt="Tomato" class="recipe__img" />
+				<h1 class="recipe__title">
+					<span>${this._data.title}</span>
+				</h1>
+			</figure>
 
-      <div class="recipe__details">
-        <div class="recipe__info">
-          <svg class="recipe__info-icon">
-            <use href="${_icons.default}#icon-clock"></use>
-          </svg>
-          <span class="recipe__info-data recipe__info-data--minutes">${this._data.cookingTime}</span>
-          <span class="recipe__info-text">minutes</span>
-        </div>
-        <div class="recipe__info">
-          <svg class="recipe__info-icon">
-            <use href="${_icons.default}#icon-users"></use>
-          </svg>
-          <span class="recipe__info-data recipe__info-data--people">${this._data.servings}</span>
-          <span class="recipe__info-text">servings</span>
+			<div class="recipe__details">
+				<div class="recipe__info">
+					<svg class="recipe__info-icon">
+						<use href="${_icons.default}#icon-clock"></use>
+					</svg>
+					<span class="recipe__info-data recipe__info-data--minutes">${this._data.cookingTime}</span>
+					<span class="recipe__info-text">minutes</span>
+				</div>
+				<div class="recipe__info">
+					<svg class="recipe__info-icon">
+						<use href="${_icons.default}#icon-users"></use>
+					</svg>
+					<span class="recipe__info-data recipe__info-data--people">${this._data.servings}</span>
+					<span class="recipe__info-text">servings</span>
 
-          <div class="recipe__info-buttons">
-            <button class="btn--tiny btn--increase-servings">
-              <svg>
-                <use href="${_icons.default}#icon-minus-circle"></use>
-              </svg>
-            </button>
-            <button class="btn--tiny btn--increase-servings">
-              <svg>
-                <use href="${_icons.default}#icon-plus-circle"></use>
-              </svg>
-            </button>
-          </div>
-        </div>
+					<div class="recipe__info-buttons">
+						<button class="btn--tiny btn--update-servings" data-update="${this._data.servings - 1}">
+							<svg>
+								<use href="${_icons.default}#icon-minus-circle"></use>
+							</svg>
+						</button>
+						<button class="btn--tiny btn--update-servings" data-update="${this._data.servings + 1}">
+							<svg>
+								<use href="${_icons.default}#icon-plus-circle"></use>
+							</svg>
+						</button>
+					</div>
+				</div>
 
-        <div class="recipe__user-generated">
-          
-        </div>
-        <button class="btn--round">
-          <svg class="">
-            <use href="${_icons.default}#icon-bookmark-fill"></use>
-          </svg>
-        </button>
-      </div>
+				<div class="recipe__user-generated">
+					
+				</div>
+				<button class="btn--round">
+					<svg class="">
+						<use href="${_icons.default}#icon-bookmark-fill"></use>
+					</svg>
+				</button>
+			</div>
 
-      <div class="recipe__ingredients">
-        <h2 class="heading--2">Recipe ingredients</h2>
-        <ul class="recipe__ingredient-list">
-          ${this._data.ingredients.map(this._generateMarkupIngredient).join('')}
-        </ul>
-      </div>
+			<div class="recipe__ingredients">
+				<h2 class="heading--2">Recipe ingredients</h2>
+				<ul class="recipe__ingredient-list">
+					${this._data.ingredients.map(this._generateMarkupIngredient).join('')}
+				</ul>
+			</div>
 
-      <div class="recipe__directions">
-        <h2 class="heading--2">How to cook it</h2>
-        <p class="recipe__directions-text">
-          This recipe was carefully designed and tested by
-          <span class="recipe__publisher">${this._data.publisher}</span>. Please check out
-          directions at their website.
-        </p>
-        <a
-          class="btn--small recipe__btn"
-          href="${this._data.sourceUrl}"
-          target="_blank"
-        >
-          <span>Directions</span>
-          <svg class="search__icon">
-            <use href="${_icons.default}#icon-arrow-right"></use>
-          </svg>
-        </a>
-      </div>      
-    `;
+			<div class="recipe__directions">
+				<h2 class="heading--2">How to cook it</h2>
+				<p class="recipe__directions-text">
+					This recipe was carefully designed and tested by
+					<span class="recipe__publisher">${this._data.publisher}</span>. Please check out
+					directions at their website.
+				</p>
+				<a
+					class="btn--small recipe__btn"
+					href="${this._data.sourceUrl}"
+					target="_blank"
+				>
+					<span>Directions</span>
+					<svg class="search__icon">
+						<use href="${_icons.default}#icon-arrow-right"></use>
+					</svg>
+				</a>
+			</div>      
+		`;
   }
 
   _generateMarkupIngredient(ingredient) {
@@ -2349,7 +2380,89 @@ class RecipeView extends _View.default {
 var _default = new RecipeView();
 
 exports.default = _default;
-},{"url:../../img/icons.svg":"e7989a846aecd2b7a3f9fe7e018a7871","fractional":"ddbc156a7c16e105c8df04e9fdec967d","./View.js":"61b7a1b097e16436be3d54c2f1828c73"}],"e7989a846aecd2b7a3f9fe7e018a7871":[function(require,module,exports) {
+},{"./View.js":"61b7a1b097e16436be3d54c2f1828c73","url:../../img/icons.svg":"e7989a846aecd2b7a3f9fe7e018a7871","fractional":"ddbc156a7c16e105c8df04e9fdec967d","../model.js":"aabf248f40f7693ef84a0cb99f385d1f"}],"61b7a1b097e16436be3d54c2f1828c73":[function(require,module,exports) {
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.default = void 0;
+
+var _icons = _interopRequireDefault(require("url:../../img/icons.svg"));
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function _defineProperty(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
+
+class View {
+  constructor() {
+    _defineProperty(this, "_data", void 0);
+  }
+
+  render(data) {
+    if (!data || Array.isArray(data) && data.length === 0) return this.renderError();
+    this._data = data;
+
+    const markup = this._generateMarkup();
+
+    this._clear();
+
+    this._parentElement.insertAdjacentHTML('afterbegin', markup);
+  }
+
+  renderSpinner() {
+    const markup = `
+			<div class="spinner">
+				<svg>
+					<use href="${_icons.default}#icon-loader"></use>
+				</svg>
+			</div>`;
+
+    this._clear();
+
+    this._parentElement.insertAdjacentHTML('afterbegin', markup);
+  }
+
+  _clear() {
+    this._parentElement.innerHTML = '';
+  }
+
+  renderError(msg = this._errorMessage) {
+    const markup = `
+      <div class="error">
+        <div>
+          <svg>
+            <use href="${_icons.default}#icon-alert-triangle"></use>
+          </svg>
+        </div>
+        <p>${msg}</p>
+      </div>`;
+
+    this._clear();
+
+    this._parentElement.insertAdjacentHTML('afterbegin', markup);
+  }
+
+  renderMessage(msg = this._message) {
+    const markup = `
+      <div class="message">
+        <div>
+          <svg>
+            <use href="${_icons.default}#icon-smile"></use>
+          </svg>
+        </div>
+        <p>${msg}</p>
+      </div>`;
+
+    this._clear();
+
+    this._parentElement.insertAdjacentHTML('afterbegin', markup);
+  }
+
+}
+
+exports.default = View;
+},{"url:../../img/icons.svg":"e7989a846aecd2b7a3f9fe7e018a7871"}],"e7989a846aecd2b7a3f9fe7e018a7871":[function(require,module,exports) {
 module.exports = require('./bundle-url').getBundleURL() + require('./relative-path')("d9eabd49e63f1841", "a5120d59b634c59d");
 },{"./bundle-url":"2146da1905b95151ed14d455c784e7b7","./relative-path":"1b9943ef25c7bbdf0dd1b9fa91880a6c"}],"2146da1905b95151ed14d455c784e7b7":[function(require,module,exports) {
 "use strict";
@@ -2831,89 +2944,7 @@ Fraction.primeFactors = function(n)
 
 module.exports.Fraction = Fraction
 
-},{}],"61b7a1b097e16436be3d54c2f1828c73":[function(require,module,exports) {
-'use strict';
-
-Object.defineProperty(exports, "__esModule", {
-  value: true
-});
-exports.default = void 0;
-
-var _icons = _interopRequireDefault(require("url:../../img/icons.svg"));
-
-function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
-
-function _defineProperty(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
-
-class View {
-  constructor() {
-    _defineProperty(this, "_data", void 0);
-  }
-
-  render(data) {
-    if (!data || Array.isArray(data) && data.length === 0) return this.renderError();
-    this._data = data;
-
-    const markup = this._generateMarkup();
-
-    this._clear();
-
-    this._parentElement.insertAdjacentHTML('afterbegin', markup);
-  }
-
-  renderSpinner() {
-    const markup = `
-			<div class="spinner">
-				<svg>
-					<use href="${_icons.default}#icon-loader"></use>
-				</svg>
-			</div>`;
-
-    this._clear();
-
-    this._parentElement.insertAdjacentHTML('afterbegin', markup);
-  }
-
-  _clear() {
-    this._parentElement.innerHTML = '';
-  }
-
-  renderError(msg = this._errorMessage) {
-    const markup = `
-      <div class="error">
-        <div>
-          <svg>
-            <use href="${_icons.default}#icon-alert-triangle"></use>
-          </svg>
-        </div>
-        <p>${msg}</p>
-      </div>`;
-
-    this._clear();
-
-    this._parentElement.insertAdjacentHTML('afterbegin', markup);
-  }
-
-  renderMessage(msg = this._message) {
-    const markup = `
-      <div class="message">
-        <div>
-          <svg>
-            <use href="${_icons.default}#icon-smile"></use>
-          </svg>
-        </div>
-        <p>${msg}</p>
-      </div>`;
-
-    this._clear();
-
-    this._parentElement.insertAdjacentHTML('afterbegin', markup);
-  }
-
-}
-
-exports.default = View;
-},{"url:../../img/icons.svg":"e7989a846aecd2b7a3f9fe7e018a7871"}],"c5d792f7cac03ef65de30cc0fbb2cae7":[function(require,module,exports) {
+},{}],"c5d792f7cac03ef65de30cc0fbb2cae7":[function(require,module,exports) {
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -3041,7 +3072,7 @@ class PaginationView extends _View.default {
 
 
     if (Number(this._data.currentPage) === 1 && numOfPages > 1) {
-      return;
+      return '';
     } // Last page
 
 
