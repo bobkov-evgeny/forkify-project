@@ -441,6 +441,8 @@ require("core-js/modules/web.immediate.js");
 
 var model = _interopRequireWildcard(require("./model.js"));
 
+var _config = require("./config.js");
+
 var _recipeView = _interopRequireDefault(require("./views/recipeView.js"));
 
 var _searchView = _interopRequireDefault(require("./views/searchView.js"));
@@ -532,8 +534,24 @@ const controlBookmarks = function () {
 
 const controlAddRecipe = async function (newRecipe) {
   try {
-    await model.uploadRecipe(newRecipe);
-    console.log(model.state.recipe);
+    _addRecipeView.default.renderSpinner();
+
+    await model.uploadRecipe(newRecipe); // render recipe
+
+    _recipeView.default.render(model.state.recipe); // display success message
+
+
+    _addRecipeView.default.renderMessage(); // render bookmark view
+
+
+    _bookmarksView.default.render(model.state.bookmarks); // change id in URL
+
+
+    window.history.pushState(null, '', `#${model.state.recipe.id}`); // close window
+
+    setTimeout(function () {
+      _addRecipeView.default.toggleWindow();
+    }, _config.MODAL_CLOSE_SEC * 1000);
   } catch (err) {
     _addRecipeView.default.renderError(err);
   }
@@ -556,7 +574,7 @@ const init = function () {
 };
 
 init();
-},{"core-js/modules/web.immediate.js":"140df4f8e97a45c53c66fead1f5a9e92","./model.js":"aabf248f40f7693ef84a0cb99f385d1f","./views/recipeView.js":"bcae1aced0301b01ccacb3e6f7dfede8","./views/searchView.js":"c5d792f7cac03ef65de30cc0fbb2cae7","./views/resultsView.js":"eacdbc0d50ee3d2819f3ee59366c2773","./views/bookmarksView.js":"7ed9311e216aa789713f70ebeec3ed40","./views/paginationView.js":"d2063f3e7de2e4cdacfcb5eb6479db05","./views/addRecipeView.js":"4dd83c2a08c1751220d223c54dc70016"}],"140df4f8e97a45c53c66fead1f5a9e92":[function(require,module,exports) {
+},{"core-js/modules/web.immediate.js":"140df4f8e97a45c53c66fead1f5a9e92","./model.js":"aabf248f40f7693ef84a0cb99f385d1f","./views/recipeView.js":"bcae1aced0301b01ccacb3e6f7dfede8","./views/searchView.js":"c5d792f7cac03ef65de30cc0fbb2cae7","./views/resultsView.js":"eacdbc0d50ee3d2819f3ee59366c2773","./views/bookmarksView.js":"7ed9311e216aa789713f70ebeec3ed40","./views/paginationView.js":"d2063f3e7de2e4cdacfcb5eb6479db05","./views/addRecipeView.js":"4dd83c2a08c1751220d223c54dc70016","./config.js":"09212d541c5c40ff2bd93475a904f8de"}],"140df4f8e97a45c53c66fead1f5a9e92":[function(require,module,exports) {
 var $ = require('../internals/export');
 
 var global = require('../internals/global');
@@ -1439,7 +1457,7 @@ const createRecipeObject = function (data) {
 
 const loadRecipe = async function (id) {
   try {
-    const data = await (0, _helpers.getJSON)(`${_config.API_URL}${id}`);
+    const data = await (0, _helpers.AJAX)(`${_config.API_URL}${id}?key=${_config.KEY}`);
     state.recipe = createRecipeObject(data);
     if (state.bookmarks.some(bookmark => bookmark.id === id)) state.recipe.bookmarked = true;else state.recipe.bookmarked = false;
   } catch (err) {
@@ -1452,13 +1470,16 @@ exports.loadRecipe = loadRecipe;
 const loadSearchResults = async function (query) {
   try {
     state.search.query = query;
-    const data = await (0, _helpers.getJSON)(`${_config.API_URL}?search=${query}`);
+    const data = await (0, _helpers.AJAX)(`${_config.API_URL}?search=${query}&key=${_config.KEY}`);
     state.search.results = data.data.recipes.map(recipe => {
       return {
         id: recipe.id,
         title: recipe.title,
         publisher: recipe.publisher,
-        image: recipe.image_url
+        image: recipe.image_url,
+        ...(recipe.key && {
+          key: recipe.key
+        })
       };
     });
   } catch (err) {
@@ -1545,7 +1566,8 @@ const uploadRecipe = async function (newRecipe) {
       servings: +newRecipe.servings,
       ingredients
     };
-    const data = await (0, _helpers.sendJSON)(`${_config.API_URL}?key=${_config.KEY}`, recipe);
+    console.log(_config.KEY);
+    const data = await (0, _helpers.AJAX)(`${_config.API_URL}?key=${_config.KEY}`, recipe);
     state.recipe = createRecipeObject(data);
     addBookmark(state.recipe);
   } catch (err) {
@@ -2310,7 +2332,7 @@ try {
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
-exports.KEY = exports.RECIPES_PER_PAGE = exports.TIMEOUT_SEC = exports.API_URL = void 0;
+exports.MODAL_CLOSE_SEC = exports.KEY = exports.RECIPES_PER_PAGE = exports.TIMEOUT_SEC = exports.API_URL = void 0;
 const API_URL = `https://forkify-api.herokuapp.com/api/v2/recipes/`;
 exports.API_URL = API_URL;
 const TIMEOUT_SEC = 10;
@@ -2319,13 +2341,15 @@ const RECIPES_PER_PAGE = 10;
 exports.RECIPES_PER_PAGE = RECIPES_PER_PAGE;
 const KEY = '211abd3b-11b4-425f-a8e5-b2f4da13c926';
 exports.KEY = KEY;
+const MODAL_CLOSE_SEC = 1;
+exports.MODAL_CLOSE_SEC = MODAL_CLOSE_SEC;
 },{}],"0e8dcd8a4e1c61cf18f78e1c2563655d":[function(require,module,exports) {
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
-exports.sendJSON = exports.getJSON = void 0;
+exports.AJAX = void 0;
 
 var _regeneratorRuntime = require("regenerator-runtime");
 
@@ -2339,28 +2363,15 @@ const timeout = function (s) {
   });
 };
 
-const getJSON = async function (url) {
+const AJAX = async function (url, uploadData = undefined) {
   try {
-    const res = await Promise.race([fetch(url), timeout(_config.TIMEOUT_SEC)]);
-    const data = await res.json();
-    if (!res.ok) throw new Error(`${data.message}(${res.status})`);
-    return data;
-  } catch (err) {
-    throw err;
-  }
-};
-
-exports.getJSON = getJSON;
-
-const sendJSON = async function (url, uploadData) {
-  try {
-    const fetchPro = fetch(url, {
+    const fetchPro = uploadData ? fetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify(uploadData)
-    });
+    }) : fetch(url);
     const res = await Promise.race([fetchPro, timeout(_config.TIMEOUT_SEC)]);
     const data = await res.json();
     if (!res.ok) throw new Error(`${data.message}(${res.status})`);
@@ -2370,7 +2381,7 @@ const sendJSON = async function (url, uploadData) {
   }
 };
 
-exports.sendJSON = sendJSON;
+exports.AJAX = AJAX;
 },{"regenerator-runtime":"e155e0d3930b156f86c48e8d05522b16","./config.js":"09212d541c5c40ff2bd93475a904f8de"}],"bcae1aced0301b01ccacb3e6f7dfede8":[function(require,module,exports) {
 'use strict';
 
@@ -2466,9 +2477,11 @@ class RecipeView extends _View.default {
 					</div>
 				</div>
 
-				<div class="recipe__user-generated">
-					
-				</div>
+				<div class="recipe__user-generated ${this._data.key ? '' : 'hidden'}">
+                  <svg>
+                    <use href="${_icons.default}#icon-user"></use>
+                  </svg>
+                </div>
 				<button class="btn--round btn--bookmark">
 					<svg class="">
 						<use href="${_icons.default}#icon-bookmark${this._data.bookmarked === true ? '-fill' : ''}"></use>
@@ -3199,6 +3212,11 @@ class ResultsView extends _View.default {
 				<div class="preview__data">
 					<h4 class="preview__title">${recipe.title}</h4>
 					<p class="preview__publisher">${recipe.publisher}</p>
+               <div class="preview__user-generated ${recipe.key ? '' : 'hidden'}">
+                  <svg>
+                    	<use href="${_icons.default}#icon-user"></use>
+                  </svg>
+               </div>
 				</div>
 			</a>
 		</li>`;
@@ -3274,7 +3292,7 @@ class PreviewView extends _View.default {
     _defineProperty(this, "_parentElement", '');
   }
 
-  _generateMarkup(recipe) {
+  _generateMarkup() {
     const id = window.location.hash.slice(1);
     return `
 		<li class="preview">
@@ -3285,7 +3303,13 @@ class PreviewView extends _View.default {
 				<div class="preview__data">
 					<h4 class="preview__title">${this._data.title}</h4>
 					<p class="preview__publisher">${this._data.publisher}</p>
+					<div class="preview__user-generated ${this._data.key ? '' : 'hidden'}">
+                  <svg>
+                    	<use href="${_icons.default}#icon-user"></use>
+                  </svg>
+               </div>
 				</div>
+				
 			</a>
 		</li>`;
   }
@@ -3394,6 +3418,8 @@ class AddRecipeView extends _View.default {
     super();
 
     _defineProperty(this, "_parentElement", document.querySelector('.upload'));
+
+    _defineProperty(this, "_message", 'Рецепт успешно добавлен!');
 
     _defineProperty(this, "_window", document.querySelector('.add-recipe-window'));
 

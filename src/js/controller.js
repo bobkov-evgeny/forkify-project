@@ -1,5 +1,6 @@
 'use strict';
 import * as model from './model.js';
+import { MODAL_CLOSE_SEC } from './config.js';
 import recipeView from './views/recipeView.js';
 import searchView from './views/searchView.js';
 import resultsView from './views/resultsView.js';
@@ -81,8 +82,26 @@ const controlBookmarks = function () {
 
 const controlAddRecipe = async function (newRecipe) {
    try {
+      addRecipeView.renderSpinner();
+
       await model.uploadRecipe(newRecipe);
-      console.log(model.state.recipe);
+
+      // render recipe
+      recipeView.render(model.state.recipe);
+
+      // display success message
+      addRecipeView.renderMessage();
+
+      // render bookmark view
+      bookmarksView.render(model.state.bookmarks);
+
+      // change id in URL
+      window.history.pushState(null, '', `#${model.state.recipe.id}`);
+
+      // close window
+      setTimeout(function () {
+         addRecipeView.toggleWindow();
+      }, MODAL_CLOSE_SEC * 1000);
    } catch (err) {
       addRecipeView.renderError(err);
    }
